@@ -38,6 +38,7 @@
     var areDMFeaturesEnabled;
     var smartCropRenditionFromJcr;
     var smartCropRenditionsDropDown;
+    var $cqFileUploadEdit;
     var $cqFileUpload;
     var imagePath;
     var fileReference;
@@ -50,6 +51,41 @@
 
         if (dialogContent) {
 
+            $cqFileUpload = $dialog.find(".cq-FileUpload");
+            $cqFileUploadEdit = $dialog.find(".cq-FileUpload-edit");
+            $dynamicMediaGroup = $dialogContent.find(".cmp-image__editor-dynamicmedia");
+            $dynamicMediaGroup.hide();
+            areDMFeaturesEnabled = ($dynamicMediaGroup.length === 1);
+            if (areDMFeaturesEnabled) {
+                smartCropRenditionsDropDown = $dynamicMediaGroup.find(smartCropRenditionDropDownSelector).get(0);
+            }
+
+            if ($cqFileUpload) {
+                imagePath = $cqFileUpload.data("cqFileuploadTemporaryfilepath").slice(0, $cqFileUpload.data("cqFileuploadTemporaryfilepath").lastIndexOf("/"));
+                retrieveInstanceInfo(imagePath);
+                $cqFileUpload.on("assetselected", function(e) {
+                    fileReference = e.path;
+                    retrieveDAMInfo(fileReference).then(
+                        function() {
+                            if (areDMFeaturesEnabled) {
+                                selectPresetType($(presetTypeSelector), "imagePreset");
+                                resetSelectField($dynamicMediaGroup.find(smartCropRenditionDropDownSelector));
+                            }
+                        }
+                    );
+                });
+            }
+
+            if ($cqFileUploadEdit) {
+                fileReference = $cqFileUploadEdit.data("cqFileuploadFilereference");
+                if (fileReference === "") {
+                    fileReference = undefined;
+                }
+                if (fileReference) {
+                    retrieveDAMInfo(fileReference);
+                }
+            }
+
             var rteInstance = $(descriptionTextfieldSelector).data("rteinstance");
             // wait for the description textfield rich text editor to signal start before initializing.
             // Ensures that any state adjustments made here will not be overridden.
@@ -61,29 +97,28 @@
                 });
             }
         }
+    });
 
-        $cqFileUpload = $dialog.find(".cq-FileUpload");
-        $dynamicMediaGroup = $dialogContent.find(".cmp-image__editor-dynamicmedia");
-        $dynamicMediaGroup.hide();
-        areDMFeaturesEnabled = ($dynamicMediaGroup.length === 1);
-        if (areDMFeaturesEnabled) {
-            smartCropRenditionsDropDown = $dynamicMediaGroup.find(smartCropRenditionDropDownSelector).get(0);
+    $(window).on("focus", function() {
+        if (fileReference) {
+            retrieveDAMInfo(fileReference);
         }
+    });
 
-        if ($cqFileUpload) {
-            imagePath = $cqFileUpload.data("cqFileuploadTemporaryfilepath").slice(0, $cqFileUpload.data("cqFileuploadTemporaryfilepath").lastIndexOf("/"));
-            retrieveInstanceInfo(imagePath);
-            $cqFileUpload.on("assetselected", function(e) {
-                fileReference = e.path;
-                retrieveDAMInfo(fileReference).then(
-                    function() {
-                        if (areDMFeaturesEnabled) {
-                            selectPresetType($(presetTypeSelector), "imagePreset");
-                            resetSelectField($dynamicMediaGroup.find(smartCropRenditionDropDownSelector));
-                        }
-                    }
-                );
-            });
+    $(document).on("change", dialogContentSelector + " " + presetTypeSelector, function(e) {
+        switch (e.target.value) {
+            case "imagePreset":
+                $dynamicMediaGroup.find(imagePresetDropDownSelector).parent().show();
+                $dynamicMediaGroup.find(smartCropRenditionDropDownSelector).parent().hide();
+                resetSelectField($dynamicMediaGroup.find(smartCropRenditionDropDownSelector));
+                break;
+            case "smartCrop":
+                $dynamicMediaGroup.find(imagePresetDropDownSelector).parent().hide();
+                $dynamicMediaGroup.find(smartCropRenditionDropDownSelector).parent().show();
+                resetSelectField($dynamicMediaGroup.find(imagePresetDropDownSelector));
+                break;
+            default:
+                break;
         }
     });
 
